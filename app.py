@@ -6,14 +6,16 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import requests
-from selenium.webdriver.common.by import By
-import requests
 import tempfile
 import os
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 from PyPDF2 import PdfMerger
+import re
 
+def extract_score(s):
+    match = re.search(r'score_(\d+)', s)
+    return int(match.group(1)) if match else float('inf')  # Use inf if score_n is missing
 
 
 def download_svg_with_headers(svg_url, referer_url=None, cookies=None):
@@ -30,7 +32,7 @@ def download_svg_with_headers(svg_url, referer_url=None, cookies=None):
     response.raise_for_status()
     return response.content
 
-def download_svgs_and_combine_to_pdf(svg_urls, output_pdf="combined.pdf"):
+def combine_svgs_to_pdf(svg_urls, output_pdf="combined.pdf"):
     # Reverse the list as requested
     svg_urls = list(reversed(svg_urls))
     temp_pdf_files = []
@@ -49,7 +51,6 @@ def download_svgs_and_combine_to_pdf(svg_urls, output_pdf="combined.pdf"):
             pdf_path = os.path.join(tempdir, f"page_{idx}.pdf")
             drawing = svg2rlg(svg_path)
             from reportlab.pdfgen import canvas
-            from reportlab.lib.pagesizes import letter
 
             c = canvas.Canvas(pdf_path, pagesize=(drawing.width, drawing.height))
             renderPDF.draw(drawing, c, 0, 0)
@@ -68,21 +69,19 @@ def download_svgs_and_combine_to_pdf(svg_urls, output_pdf="combined.pdf"):
 def scrape_jmuse_svgs(url):
     chrome_options = Options()
     chrome_options.page_load_strategy = 'eager'
-    # chrome_options.add_argument("--headless")  # Uncomment for headless operation
+    chrome_options.add_argument("--headless=new")  # Use headless=new for modern headless mode
+    chrome_options.add_argument("window-size=1920,1080")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    driver.maximize_window()
-
+    driver.set_window_size(1920,1080)
     svg_sources = set()
-
     try:
         driver.get(url)
 
-        time.sleep(1.5)  # Wait for initial content to load
+        time.sleep(3)  # Wait for initial content to load
       
         scroller = driver.find_element(By.ID, "jmuse-scroller-component")
-
 
         # Try clicking the scroller immediately
         scroller.click()
@@ -100,7 +99,7 @@ def scrape_jmuse_svgs(url):
                     svg_sources.add(src)
 
             scroller.send_keys(Keys.PAGE_DOWN)
-            time.sleep(1.4)
+            time.sleep(0.6)
 
             current_height = driver.execute_script("return arguments[0].scrollTop", scroller)
             if current_height == last_height:
@@ -111,14 +110,26 @@ def scrape_jmuse_svgs(url):
                 same_count = 0
             last_height = current_height
 
-        return list(svg_sources)
+        sources =  list(svg_sources)
+        sorted_arr = sorted(sources, key=extract_score, reverse=True)
+
+        return sorted_arr
     finally:
         driver.quit()
 
 def main():
-    print("Enter musescore url (type 'exit' or Ctrl-C to quit).")
+    print("Enter file name (without .pdf):")
     while True:
         try:
+            filename = input(">>> ").strip()
+            if filename.lower() in ("exit", "quit"):
+                print("Exiting.")
+                break
+            if not filename:
+                print("Invalid file name. Try again.")
+                continue
+
+            print("Enter musescore url (type 'exit' or Ctrl-C to quit).")
             cmd = input(">>> ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nExiting.")
@@ -130,9 +141,12 @@ def main():
             continue
 
         svg_sources = scrape_jmuse_svgs(cmd)
+        print(svg_sources)
         if svg_sources:
-            print(svg_sources)
-            download_svgs_and_combine_to_pdf(svg_sources)
+            # Ensure Scores directory exists
+            os.makedirs("./Scores", exist_ok=True)
+            output_pdf = os.path.join("Scores", f"{filename}.pdf")
+            combine_svgs_to_pdf(svg_sources, output_pdf=output_pdf)
         else:
             print("No SVG images found.")
 

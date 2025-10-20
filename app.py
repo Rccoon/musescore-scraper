@@ -141,7 +141,7 @@ def main():
             continue
 
         svg_sources = scrape_jmuse_svgs(cmd)
-        print(svg_sources)
+
         if svg_sources:
             # Ensure Scores directory exists
             os.makedirs("./Scores", exist_ok=True)

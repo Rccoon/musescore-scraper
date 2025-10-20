@@ -4,3 +4,4 @@ webdriver-manager
 svglib 
 PyPDF2
 reportlab 
+pyinstaller

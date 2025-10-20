@@ -1,3 +1,6 @@
 selenium
 requests
 webdriver-manager
+svglib 
+PyPDF2
+reportlab 

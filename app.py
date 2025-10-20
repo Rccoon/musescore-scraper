@@ -1,51 +1,58 @@
 import sys
+import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-import time
 
-def scrape_jmuse_images(url):
-    """
-    Uses Selenium to find the div with id 'jmuse-scroller-component', scrolls through its inner divs,
-    and scrapes the src attribute of any <img> tag found inside each inner div.
-
-    Args:
-        url (str): The URL of the page to scrape.
-
-    Returns:
-        List[str]: List of image src URLs scraped from the jmuse-scroller-component divs.
-    """
+def scrape_jmuse_svgs(url):
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--headless")  # Uncomment for headless operation
+    chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    image_sources = []
-
+    driver.maximize_window()  # <--- This line maximizes the window to full screen
+    svg_sources = set()
     try:
         driver.get(url)
-        time.sleep(3)  # Wait for JS to load; adjust as needed
+        time.sleep(0.7)  # Shorter initial wait
 
         scroller = driver.find_element(By.ID, "jmuse-scroller-component")
-        inner_divs = scroller.find_elements(By.XPATH, "./div")
-        actions = ActionChains(driver)
 
-        for div in inner_divs:
-            # Scroll div into view
-            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", div)
-            time.sleep(1)  # Wait for image to load
+        last_height = -1
+        same_count = 0
+        max_same = 8  # Number of unchanged scrolls before assuming we're done
 
-            try:
-                img = div.find_element(By.TAG_NAME, "img")
+        # First, scroll by a small amount (simulate a slight arrow down)
+        scroller.click()
+        scroller.send_keys(Keys.ARROW_DOWN)
+        time.sleep(1.0)  # Give time for new image to load
+
+        while True:
+            # Collect SVGs currently visible
+            imgs = scroller.find_elements(By.TAG_NAME, "img")
+            for img in imgs:
                 src = img.get_attribute("src")
-                if src:
-                    image_sources.append(src)
-            except Exception:
-                pass  # No image found in this div
+                if src and "svg" in src.lower():
+                    svg_sources.add(src)
 
-        return image_sources
+            # Scroll the scroller by sending PAGE_DOWN
+            scroller.send_keys(Keys.PAGE_DOWN)
+            time.sleep(1.4)  # Longer wait after each scroll for lazy-loading
+
+            # Check if we've reached the bottom by looking at scrollTop
+            current_height = driver.execute_script("return arguments[0].scrollTop", scroller)
+            if current_height == last_height:
+                same_count += 1
+                if same_count >= max_same:
+                    break
+            else:
+                same_count = 0
+            last_height = current_height
+
+        return list(svg_sources)
     finally:
         driver.quit()
 
@@ -53,21 +60,21 @@ def main():
     print("Enter musescore url (type 'exit' or Ctrl-C to quit).")
     while True:
         try:
-            cmd = input(">>> ")  # prompt
+            cmd = input(">>> ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nExiting.")
             break
-        
-        cmd = cmd.strip()
+
         if cmd.lower() in ("exit", "quit"):
             break
-        
         if not cmd:
             continue
-        
-        image_sources = scrape_jmuse_images(cmd)
-        if image_sources:
-            print(image_sources)
+
+        svg_sources = scrape_jmuse_svgs(cmd)
+        if svg_sources:
+            print(svg_sources)
+        else:
+            print("No SVG images found.")
 
 if __name__ == "__main__":
     main()

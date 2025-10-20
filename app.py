@@ -1,33 +1,53 @@
 import sys
-import requests
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+import time
 
-def fetch_url(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/129.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;"
-                  "q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        # Optionally:
-        # "Referer": "https://example.com/",
-        # "Origin": "https://example.com",
-        # "Sec‑Fetch‑Site": "none",
-        # "Sec‑Fetch‑Mode": "navigate",
-        # "Sec‑Fetch‑User": "?1",
-        # "Sec‑Fetch‑Dest": "document",
-    }
+def scrape_jmuse_images(url):
+    """
+    Uses Selenium to find the div with id 'jmuse-scroller-component', scrolls through its inner divs,
+    and scrapes the src attribute of any <img> tag found inside each inner div.
 
-    session = requests.Session()
-    response = session.get(url, headers=headers)
-    print("Status:", response.status_code)
-    if response.status_code == 200:
-        print(response.text[:500])  # print first 500 chars of HTML
-    else:
-        print("Failed to fetch:", response.text)
+    Args:
+        url (str): The URL of the page to scrape.
 
+    Returns:
+        List[str]: List of image src URLs scraped from the jmuse-scroller-component divs.
+    """
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    image_sources = []
+
+    try:
+        driver.get(url)
+        time.sleep(3)  # Wait for JS to load; adjust as needed
+
+        scroller = driver.find_element(By.ID, "jmuse-scroller-component")
+        inner_divs = scroller.find_elements(By.XPATH, "./div")
+        actions = ActionChains(driver)
+
+        for div in inner_divs:
+            # Scroll div into view
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", div)
+            time.sleep(1)  # Wait for image to load
+
+            try:
+                img = div.find_element(By.TAG_NAME, "img")
+                src = img.get_attribute("src")
+                if src:
+                    image_sources.append(src)
+            except Exception:
+                pass  # No image found in this div
+
+        return image_sources
+    finally:
+        driver.quit()
 
 def main():
     print("Enter musescore url (type 'exit' or Ctrl-C to quit).")
@@ -45,8 +65,9 @@ def main():
         if not cmd:
             continue
         
-        fetch_url(cmd)
-        
+        image_sources = scrape_jmuse_images(cmd)
+        if image_sources:
+            print(image_sources)
 
 if __name__ == "__main__":
     main()

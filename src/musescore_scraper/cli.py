@@ -1,13 +1,32 @@
+import argparse
 from pathlib import Path
 
+from musescore_scraper import __version__
 from musescore_scraper.converter import combine_svgs_to_pdf
 from musescore_scraper.scraper import scrape_svg_urls
 from musescore_scraper.utils import is_valid_musescore_url
 
-OUTPUT_DIR = Path("output")
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Download MuseScore sheet music as PDFs"
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        default=".",
+        help="output directory (default: current directory)",
+    )
+    parser.add_argument("-v", "--version", action="version", version=__version__)
+    return parser.parse_args()
 
 
 def main():
+    args = parse_args()
+    output_dir = Path(args.output).expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Saving PDFs to: {output_dir}\n")
+
     while True:
         try:
             print("Enter MuseScore URL (type 'exit' or Ctrl-C to quit):")
@@ -47,8 +66,7 @@ def main():
             print("No pages found for this score.")
             continue
 
-        OUTPUT_DIR.mkdir(exist_ok=True)
-        output_pdf = OUTPUT_DIR / f"{filename}.pdf"
+        output_pdf = output_dir / f"{filename}.pdf"
 
         try:
             combine_svgs_to_pdf(image_urls, output_pdf=output_pdf)

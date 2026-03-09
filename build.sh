@@ -84,7 +84,8 @@ if [[ "${answer,,}" == "y" || "${answer,,}" == "yes" ]]; then
 
     mkdir -p "$INSTALL_APPS"
     # Write desktop entry with absolute path so desktop environments find the binary
-    sed "s|^Exec=musescore-scraper|Exec=$INSTALL_BIN/musescore-scraper|" \
+    sed -e "s|^Exec=musescore-scraper|Exec=$INSTALL_BIN/musescore-scraper|" \
+        -e "s|MUSESCORE_OUTPUT_DIR|$HOME/Documents/musescore_scraped|" \
         "$SCRIPT_DIR/musescore-scraper.desktop" > "$INSTALL_APPS/musescore-scraper.desktop"
     green "Installed desktop entry to $INSTALL_APPS/musescore-scraper.desktop"
 

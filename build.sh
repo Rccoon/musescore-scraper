@@ -106,7 +106,9 @@ if [[ "${answer,,}" == "y" || "${answer,,}" == "yes" ]]; then
     green "Installed binary to $INSTALL_BIN/musescore-scraper"
 
     mkdir -p "$INSTALL_APPS"
-    cp "$SCRIPT_DIR/musescore-scraper.desktop" "$INSTALL_APPS/musescore-scraper.desktop"
+    # Write desktop entry with absolute path so desktop environments find the binary
+    sed "s|^Exec=musescore-scraper|Exec=$INSTALL_BIN/musescore-scraper|" \
+        "$SCRIPT_DIR/musescore-scraper.desktop" > "$INSTALL_APPS/musescore-scraper.desktop"
     green "Installed desktop entry to $INSTALL_APPS/musescore-scraper.desktop"
 
     # Refresh desktop database if available

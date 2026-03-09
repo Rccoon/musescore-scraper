@@ -57,8 +57,6 @@ echo ""
 echo "Building executable..."
 pyinstaller --onefile --name musescore-scraper \
     --collect-all curl_cffi \
-    --collect-all playwright \
-    --collect-all playwright_stealth \
     src/musescore_scraper/cli.py
 
 echo ""

@@ -54,7 +54,15 @@ def main():
             combine_svgs_to_pdf(image_urls, output_pdf=output_pdf)
         except Exception as e:
             print(f"\nError creating PDF: {e}")
-            continue
+
+        try:
+            again = input("\nDownload another? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting.")
+            break
+
+        if again not in ("y", "yes"):
+            break
 
 
 if __name__ == "__main__":

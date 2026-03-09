@@ -9,25 +9,22 @@ from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 
-from musescore_scraper.utils import extract_score
+from musescore_scraper.utils import extract_score_page
 
-# Browser binary candidates in order of preference.
 _CHROME_CANDIDATES = ("google-chrome-stable", "google-chrome")
 _CHROMIUM_CANDIDATES = ("chromium", "chromium-browser")
 
+INITIAL_LOAD_DELAY = 3
+SCROLL_DELAY = 0.6
+MAX_SCROLL_STALLS = 8
+
 
 def _detect_browser():
-    """Detect whether Chrome or Chromium is installed.
-
-    Returns a tuple of (binary_path, chrome_type) where chrome_type is
-    a ChromeType enum value for webdriver-manager.
-
-    Raises RuntimeError if neither is found.
-    """
     for name in _CHROME_CANDIDATES:
         path = shutil.which(name)
         if path:
             return path, ChromeType.GOOGLE
+
     for name in _CHROMIUM_CANDIDATES:
         path = shutil.which(name)
         if path:
@@ -43,64 +40,69 @@ def _detect_browser():
     )
 
 
-def scrape_jmuse_svgs(url):
-    """Scrape SVG image URLs from a MuseScore score page.
-
-    Launches a headless Chrome/Chromium browser, navigates to the given URL,
-    scrolls through the score to collect all SVG image URLs, and
-    returns them sorted by score page number.
-    """
+def _create_driver():
     browser_path, chrome_type = _detect_browser()
 
-    chrome_options = Options()
-    chrome_options.binary_location = browser_path
-    chrome_options.page_load_strategy = "eager"
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("window-size=1920,1080")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
+    options = Options()
+    options.binary_location = browser_path
+    options.page_load_strategy = "eager"
+    options.add_argument("--headless=new")
+    options.add_argument("window-size=1920,1080")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
 
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager(chrome_type=chrome_type).install()),
-        options=chrome_options,
+        options=options,
     )
     driver.set_window_size(1920, 1080)
-    svg_sources = set()
+    return driver
+
+
+def _collect_svg_urls(scroller):
+    urls = set()
+    for img in scroller.find_elements(By.TAG_NAME, "img"):
+        src = img.get_attribute("src")
+        if src and "svg" in src.lower():
+            urls.add(src)
+    return urls
+
+
+def _scroll_and_collect(driver, scroller):
+    svg_urls = set()
+    last_scroll_pos = -1
+    stall_count = 0
+
+    while True:
+        svg_urls |= _collect_svg_urls(scroller)
+
+        scroller.send_keys(Keys.PAGE_DOWN)
+        time.sleep(SCROLL_DELAY)
+
+        current_pos = driver.execute_script("return arguments[0].scrollTop", scroller)
+        if current_pos == last_scroll_pos:
+            stall_count += 1
+            if stall_count >= MAX_SCROLL_STALLS:
+                break
+        else:
+            stall_count = 0
+        last_scroll_pos = current_pos
+
+    return svg_urls
+
+
+def scrape_svg_urls(url):
+    """Scrape all SVG page URLs from a MuseScore score page, in page order."""
+    driver = _create_driver()
 
     try:
         driver.get(url)
-        time.sleep(3)
+        time.sleep(INITIAL_LOAD_DELAY)
 
         scroller = driver.find_element(By.ID, "jmuse-scroller-component")
         scroller.click()
 
-        last_height = -1
-        same_count = 0
-        max_same = 8
-
-        while True:
-            imgs = scroller.find_elements(By.TAG_NAME, "img")
-            for img in imgs:
-                src = img.get_attribute("src")
-                if src and "svg" in src.lower():
-                    svg_sources.add(src)
-
-            scroller.send_keys(Keys.PAGE_DOWN)
-            time.sleep(0.6)
-
-            current_height = driver.execute_script(
-                "return arguments[0].scrollTop", scroller
-            )
-            if current_height == last_height:
-                same_count += 1
-                if same_count >= max_same:
-                    break
-            else:
-                same_count = 0
-            last_height = current_height
-
-        sources = list(svg_sources)
-        sorted_arr = sorted(sources, key=extract_score, reverse=True)
-        return sorted_arr
+        svg_urls = _scroll_and_collect(driver, scroller)
+        return sorted(svg_urls, key=extract_score_page)
     finally:
         driver.quit()

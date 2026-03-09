@@ -1,43 +1,42 @@
-import os
+from pathlib import Path
 
 from musescore_scraper.converter import combine_svgs_to_pdf
-from musescore_scraper.scraper import scrape_jmuse_svgs
+from musescore_scraper.scraper import scrape_svg_urls
 
-OUTPUT_DIR = os.path.join(".", "output")
+OUTPUT_DIR = Path("output")
 
 
 def main():
-    """Interactive CLI loop for scraping MuseScore scores to PDF."""
-    print("Enter file name (without .pdf):")
     while True:
         try:
+            print("Enter file name (without .pdf):")
             filename = input(">>> ").strip()
             if filename.lower() in ("exit", "quit"):
-                print("Exiting.")
                 break
             if not filename:
                 print("Invalid file name. Try again.")
                 continue
 
-            print("Enter musescore url (type 'exit' or Ctrl-C to quit).")
-            cmd = input(">>> ").strip()
+            print("Enter MuseScore URL (type 'exit' or Ctrl-C to quit):")
+            url = input(">>> ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nExiting.")
             break
 
-        if cmd.lower() in ("exit", "quit"):
+        if url.lower() in ("exit", "quit"):
             break
-        if not cmd:
+        if not url:
             continue
 
-        svg_sources = scrape_jmuse_svgs(cmd)
+        svg_urls = scrape_svg_urls(url)
 
-        if svg_sources:
-            os.makedirs(OUTPUT_DIR, exist_ok=True)
-            output_pdf = os.path.join(OUTPUT_DIR, f"{filename}.pdf")
-            combine_svgs_to_pdf(svg_sources, output_pdf=output_pdf)
-        else:
+        if not svg_urls:
             print("No SVG images found.")
+            continue
+
+        OUTPUT_DIR.mkdir(exist_ok=True)
+        output_pdf = OUTPUT_DIR / f"{filename}.pdf"
+        combine_svgs_to_pdf(svg_urls, output_pdf=output_pdf)
 
 
 if __name__ == "__main__":

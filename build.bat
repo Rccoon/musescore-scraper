@@ -10,13 +10,13 @@ IF NOT EXIST %VENV_DIR% (
 REM Activate the venv
 call %VENV_DIR%\Scripts\activate
 
-REM Install packages
+REM Install packages (including dev dependencies for PyInstaller)
 echo Installing packages...
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 REM Build the exe
 echo Building executable...
-pyinstaller --onefile --name MuseScore-scraper.exe app.py
+pyinstaller --onefile --name MuseScore-scraper src/musescore_scraper/cli.py
 
 REM Deactivate and finish
 deactivate

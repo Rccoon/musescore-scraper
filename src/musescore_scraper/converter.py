@@ -21,6 +21,8 @@ def _svg_to_pdf(svg_bytes, svg_path, pdf_path):
     svg_path.write_bytes(svg_bytes)
 
     drawing = svg2rlg(str(svg_path))
+    if drawing is None:
+        raise ValueError(f"Failed to parse SVG: {svg_path.name}")
     pdf_canvas = canvas.Canvas(str(pdf_path), pagesize=(drawing.width, drawing.height))
     renderPDF.draw(drawing, pdf_canvas, 0, 0)
     pdf_canvas.showPage()

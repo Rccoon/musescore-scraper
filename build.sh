@@ -2,7 +2,7 @@
 set -euo pipefail
 
 VENV_DIR=".venv"
-MIN_PYTHON="3.9"
+MIN_PYTHON="3.10"
 
 # --- Color helpers ---
 red()   { printf '\033[0;31m%s\033[0m\n' "$*"; }
@@ -16,7 +16,7 @@ check_python() {
         if command -v "$cmd" &>/dev/null; then
             local ver
             ver=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-            if "$cmd" -c "import sys; exit(0 if sys.version_info >= (3,9) else 1)" 2>/dev/null; then
+            if "$cmd" -c "import sys; exit(0 if sys.version_info >= (3,10) else 1)" 2>/dev/null; then
                 PYTHON="$cmd"
                 green "Found Python $ver ($cmd)"
                 return 0
@@ -29,38 +29,11 @@ check_python() {
     exit 1
 }
 
-# --- Detect Chrome / Chromium ---
-detect_browser() {
-    local candidates=(
-        google-chrome-stable
-        google-chrome
-        chromium
-        chromium-browser
-    )
-    for bin in "${candidates[@]}"; do
-        if command -v "$bin" &>/dev/null; then
-            green "Found browser: $bin"
-            return 0
-        fi
-    done
-    yellow "Warning: Neither Google Chrome nor Chromium was found in PATH."
-    yellow "The scraper requires Chrome or Chromium to run."
-    yellow ""
-    yellow "Install one of the following:"
-    yellow "  Arch:       sudo pacman -S chromium"
-    yellow "  Debian/Ubuntu: sudo apt install chromium-browser"
-    yellow "  Fedora:     sudo dnf install chromium"
-    yellow "  Or install Google Chrome from https://www.google.com/chrome/"
-    yellow ""
-    yellow "Continuing build anyway..."
-}
-
 # --- Main ---
 echo "=== MuseScore Scraper - Linux Build ==="
 echo ""
 
 check_python
-detect_browser
 
 echo ""
 
@@ -82,7 +55,11 @@ echo ""
 
 # Build standalone binary
 echo "Building executable..."
-pyinstaller --onefile --name musescore-scraper src/musescore_scraper/cli.py
+pyinstaller --onefile --name musescore-scraper \
+    --collect-all curl_cffi \
+    --collect-all playwright \
+    --collect-all playwright_stealth \
+    src/musescore_scraper/cli.py
 
 echo ""
 green "Build complete! Binary at: dist/musescore-scraper"

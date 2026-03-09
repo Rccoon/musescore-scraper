@@ -1,7 +1,7 @@
 import re
 
+_SCORE_URL_PATTERN = re.compile(r"^https?://(?:www\.)?musescore\.com/.+/scores/\d+")
 
-def extract_score_page(url):
-    """Extract the page number from a 'score_N' pattern in a URL."""
-    match = re.search(r"score_(\d+)", url)
-    return int(match.group(1)) if match else float("inf")
+
+def is_valid_musescore_url(url):
+    return bool(_SCORE_URL_PATTERN.match(url))

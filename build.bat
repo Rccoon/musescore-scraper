@@ -16,7 +16,7 @@ pip install -e ".[dev]"
 
 REM Build the exe
 echo Building executable...
-pyinstaller --onefile --name MuseScore-scraper src/musescore_scraper/cli.py
+pyinstaller --onefile --name MuseScore-scraper --collect-all curl_cffi --collect-all playwright --collect-all playwright_stealth src/musescore_scraper/cli.py
 
 REM Deactivate and finish
 deactivate

@@ -2,22 +2,17 @@ from pathlib import Path
 from os import PathLike
 import tempfile
 
-import requests
+from curl_cffi import requests
 from PyPDF2 import PdfMerger
 from reportlab.graphics import renderPDF
 from reportlab.pdfgen import canvas
 from svglib.svglib import svg2rlg
 
-_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/118.0.0.0 Safari/537.36"
-)
 
-
-def _download_svg(url):
-    headers = {"User-Agent": _USER_AGENT}
-    response = requests.get(url, headers=headers)
+def _download_svg(url, session=None):
+    if session is None:
+        session = requests.Session(impersonate="chrome")
+    response = session.get(url)
     response.raise_for_status()
     return response.content
 

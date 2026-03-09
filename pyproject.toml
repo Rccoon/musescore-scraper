@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "musescore-scraper"
 version = "1.0.0"
 description = "Download MuseScore sheet music as PDFs"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
-    "selenium",
-    "requests",
-    "webdriver-manager",
+    "curl_cffi",
+    "playwright",
+    "playwright-stealth",
     "svglib",
     "reportlab",
     "PyPDF2",

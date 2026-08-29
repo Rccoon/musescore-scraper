@@ -14,9 +14,13 @@ REM Install packages (including dev dependencies for PyInstaller)
 echo Installing packages...
 pip install -e ".[dev]"
 
+REM Download the Chromium build used to clear MuseScore's bot protection
+echo Installing Chromium for patchright...
+patchright install chromium
+
 REM Build the exe
 echo Building executable...
-pyinstaller --onefile --name MuseScore-scraper --collect-all curl_cffi src/musescore_scraper/cli.py
+pyinstaller --onefile --name MuseScore-scraper --collect-all curl_cffi --collect-all patchright src/musescore_scraper/cli.py
 
 REM Deactivate and finish
 deactivate

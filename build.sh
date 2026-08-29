@@ -51,12 +51,17 @@ source "$VENV_DIR/bin/activate"
 echo "Installing packages..."
 pip install -e ".[dev]"
 
+# Download the Chromium build used to clear MuseScore's bot protection
+echo "Installing Chromium for patchright..."
+patchright install chromium
+
 echo ""
 
 # Build standalone binary
 echo "Building executable..."
 pyinstaller --onefile --name musescore-scraper \
     --collect-all curl_cffi \
+    --collect-all patchright \
     src/musescore_scraper/cli.py
 
 echo ""
@@ -71,6 +76,7 @@ echo ""
 echo "Install musescore-scraper? This will:"
 echo "  - Copy binary to $INSTALL_BIN/musescore-scraper"
 echo "  - Install desktop entry to $INSTALL_APPS/"
+echo "  - Install icons (multiple sizes) via xdg-icon-resource"
 echo ""
 read -rp "Install now? [y/N] " answer
 
@@ -86,6 +92,13 @@ if [[ "${answer,,}" == "y" || "${answer,,}" == "yes" ]]; then
         -e "s|MUSESCORE_OUTPUT_DIR|$HOME/Documents/musescore_scraped|" \
         "$SCRIPT_DIR/musescore-scraper.desktop" > "$INSTALL_APPS/musescore-scraper.desktop"
     green "Installed desktop entry to $INSTALL_APPS/musescore-scraper.desktop"
+
+    # Install icons at all available sizes into the hicolor theme
+    for icon in "$SCRIPT_DIR"/icons/musescore-*.png; do
+        size=$(basename "$icon" | grep -oP '\d+(?=\.png)')
+        xdg-icon-resource install --novendor --size "$size" "$icon" musescore-scraper
+    done
+    green "Installed icons ($(ls "$SCRIPT_DIR"/icons/musescore-*.png | wc -l) sizes) via xdg-icon-resource"
 
     # Refresh desktop database if available
     if command -v update-desktop-database &>/dev/null; then

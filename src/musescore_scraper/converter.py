@@ -29,18 +29,21 @@ def _svg_to_pdf(svg_bytes, svg_path, pdf_path):
     pdf_canvas.save()
 
 
-def combine_svgs_to_pdf(svg_urls, output_pdf: str | PathLike = "combined.pdf"):
-    """Download SVGs, convert each to a PDF page, and merge into one file."""
+def combine_svgs_to_pdf(svg_sources, output_pdf: str | PathLike = "combined.pdf"):
+    """Convert each SVG to a PDF page and merge into one file.
+
+    Each item may be raw SVG bytes (already downloaded) or a URL to fetch.
+    """
     pdf_paths = []
 
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = Path(tempdir)
 
-        for idx, svg_url in enumerate(svg_urls):
+        for idx, source in enumerate(svg_sources):
             svg_path = tempdir / f"page_{idx}.svg"
             pdf_path = tempdir / f"page_{idx}.pdf"
 
-            svg_bytes = _download_svg(svg_url)
+            svg_bytes = source if isinstance(source, bytes) else _download_svg(source)
             _svg_to_pdf(svg_bytes, svg_path, pdf_path)
             pdf_paths.append(pdf_path)
 

@@ -8,18 +8,50 @@ into a single PDF file.
 ## Prerequisites
 
 - Python >= 3.10
+- A desktop session (the browser window must be visible — see below)
 
 ## Installation
 
 ```bash
 pip install .
+patchright install chromium
 ```
 
 For development (includes PyInstaller):
 
 ```bash
 pip install -e ".[dev]"
+patchright install chromium
 ```
+
+## How it works
+
+MuseScore sits behind two bot-protection layers: a Cloudflare Managed
+Challenge and DataDome. Neither can be cleared by plain HTTP requests —
+DataDome validates the TLS fingerprint, so no amount of header spoofing or
+cookie copying gets through.
+
+The scraper therefore opens a real Chromium window to clear both walls, then
+queries MuseScore's internal image API from inside that page. The sheet music
+itself is served from S3 without protection, so pages are downloaded in
+parallel with plain HTTP once the URLs are known.
+
+Practical consequences:
+
+- **A browser window will briefly appear.** This is required. Headless mode
+  and off-screen windows are both detected and blocked, so the window has to
+  render on a real display.
+- **On a headless Linux server** you need a virtual display (e.g. `xvfb-run`).
+- The first run downloads Chromium (~150 MB). The browser profile is cached in
+  `~/.cache/musescore-scraper/browser`, so later runs usually skip the
+  challenge and start in a couple of seconds.
+- The built binary reuses the Chromium that the build script installed (the
+  browser cache under `~/.cache/ms-playwright`, or the platform equivalent).
+  You can point it elsewhere with the `PLAYWRIGHT_BROWSERS_PATH` environment
+  variable.
+- Some scores are limited by MuseScore to a **one-page preview**. The tool says
+  so explicitly rather than quietly saving a one-page PDF; the rest of those
+  scores requires a paid MuseScore account.
 
 ## Usage
 
@@ -43,8 +75,8 @@ chmod +x build.sh
 ./build.sh
 ```
 
-This creates a virtual environment, installs dependencies, and produces a
-standalone binary at `dist/musescore-scraper` via PyInstaller.
+This creates a virtual environment, installs dependencies, downloads Chromium,
+and produces a standalone binary at `dist/musescore-scraper` via PyInstaller.
 
 After building, the script offers to install:
 

@@ -2,6 +2,7 @@
 Name=MuseScore Scraper
 Comment=Download MuseScore sheet music as PDFs
 Exec=musescore-scraper --output MUSESCORE_OUTPUT_DIR
+Icon=musescore-scraper
 Terminal=true
 Type=Application
 Categories=Utility;

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from musescore_scraper import __version__
 from musescore_scraper.converter import combine_svgs_to_pdf
-from musescore_scraper.scraper import scrape_svg_urls
+from musescore_scraper.scraper import ScrapeError, scrape_score_pages
 from musescore_scraper.utils import is_valid_musescore_url
 
 
@@ -57,19 +57,22 @@ def main():
             continue
 
         try:
-            image_urls = scrape_svg_urls(url)
+            pages = scrape_score_pages(url)
+        except ScrapeError as e:
+            print(f"\n{e}")
+            continue
         except Exception as e:
             print(f"\nError fetching score: {e}")
             continue
 
-        if not image_urls:
+        if not pages:
             print("No pages found for this score.")
             continue
 
         output_pdf = output_dir / f"{filename}.pdf"
 
         try:
-            combine_svgs_to_pdf(image_urls, output_pdf=output_pdf)
+            combine_svgs_to_pdf(pages, output_pdf=output_pdf)
         except Exception as e:
             print(f"\nError creating PDF: {e}")
 
